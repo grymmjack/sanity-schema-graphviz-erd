@@ -1,0 +1,30 @@
+{
+  "name": "sanity-schema-visualizer",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "generate": "npx ts-node --esm generate-schema-graph.ts",
+    "pdf": "npm run generate && dot -Tpdf schema.dot -o schema.pdf",
+    "png": "npm run generate && dot -Tpng schema.dot -o schema.png",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/luxome-rickc/sanity-schema-visualizer.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/luxome-rickc/sanity-schema-visualizer/issues"
+  },
+  "homepage": "https://github.com/luxome-rickc/sanity-schema-visualizer#readme",
+  "dependencies": {
+    "@types/node": "^24.3.0",
+    "ts-graphviz": "^3.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2"
+  }
+}
