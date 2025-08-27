@@ -1,6 +1,8 @@
 # Sanity Schema Visualizer
 
-A powerful tool that converts schema definitions into professional Entity Relationship (ER) diagrams. This flexible visualizer supports ## Choosing the Right Layout
+A powerful tool that converts schema definitions into professional Entity Relationship (ER) diagrams.
+
+## Choosing the Right Layout
 
 With complex schemas (90+ relationships), different layout algorithms work better for different use cases:
 
