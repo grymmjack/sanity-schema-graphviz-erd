@@ -1,15 +1,20 @@
 # Sanity Schema Visualizer
 
-A powerful tool that converts Sanity CMS schema definitions into professional Entity Relationship (ER) diagrams. This visualizer automatically detects relationships between your schema types and generates beautiful, connected diagrams that help you understand your content structure at a glance.
+A powerful tool that converts schema definitions into professional Entity Relationship (ER) diagrams. This flexible visualizer supports multiple input formats and automatically detects relationships between your schema types to generate beautiful, connected diagrams that help you understand your content structure at a glance.
 
 ## Features
 
+- 🔄 **Multiple Input Formats**: Support for different schema formats
+  - `schema.club` (default) - Current format used by this project (get this from export on https://schema.club)
+  - `sanity` (coming soon) - Native Sanity Studio schema format
 - 🔗 **Automatic Relationship Detection**: Identifies references between schema types and draws connections
 - 🎨 **Professional ER Diagram Styling**: Clean, vertical layout with bold titles and clear typography
 - 🌈 **Color-Coded Relationships**: Different colors and styles for various relationship types
 - 📊 **Multiple Output Formats**: Generate PDF, PNG, SVG, and DOT files
 - 🔍 **Visual Origin Markers**: Square markers show exactly where relationships originate
 - 📱 **Responsive Layout**: Vertical stacking prevents overly wide diagrams
+- 🛠️ **Command-line Interface**: Easy-to-use CLI with flexible options
+- 🧩 **Extensible Architecture**: Easy to add support for new schema formats
 
 ## Prerequisites
 
@@ -60,11 +65,101 @@ npm install
 
 ## Usage
 
+### Basic Usage
+
+Generate ERD using the default `schema.club` format:
+
+```bash
+npm run generate
+```
+
+### Specify Input Format
+
+Generate ERD using a specific input format:
+
+```bash
+# Using schema.club format (default)
+npm run generate -- --input-format=schema.club
+
+# Using sanity format (coming soon)
+npm run generate -- --input-format=sanity
+```
+
+### Convenience Scripts
+
+Quick commands for specific formats:
+
+```bash
+# Generate using schema.club format
+npm run generate:schema.club
+
+# Generate using sanity format
+npm run generate:sanity
+```
+
+### Output Formats
+
+Generate different output formats:
+
+```bash
+# Generate DOT file (default)
+npm run generate
+
+# Generate PDF
+npm run pdf
+
+# Generate PNG
+npm run png
+```
+
+### Help
+
+View all available options:
+
+```bash
+npm run generate -- --help
+```
+
+## Supported Formats
+
+### Schema.club Format (Default)
+
+The current format used by this project. This is the default format and requires no additional configuration.
+
+**Example usage:**
+
+```bash
+npm run generate
+# or explicitly
+npm run generate -- --input-format=schema.club
+```
+
+Your `schema.json` file should contain an array of schema types in JavaScript object notation format.
+
+### Sanity Format (Coming Soon)
+
+Native support for Sanity Studio schema format. When available, you'll be able to directly process schemas extracted from Sanity Studio.
+
+**Example usage (when implemented):**
+
+```bash
+# Extract schema from Sanity Studio (run in your Sanity project)
+npx sanity@latest schema extract
+
+# Generate ERD from Sanity schema
+npm run generate -- --input-format=sanity
+```
+
+## Command-line Options
+
+| Option           | Short | Description                                   | Default       |
+| ---------------- | ----- | --------------------------------------------- | ------------- |
+| `--input-format` | `-f`  | Input schema format (`schema.club`, `sanity`) | `schema.club` |
+| `--help`         | `-h`  | Show help information                         | -             |
+
 ### Step 1: Prepare Your Schema File
 
-> See https://www.sanity.io/docs/cli-reference/cli-schema#fd5b8db9f9c4 to learn more about sanity CLI.
-
-Using `sanity schema extract` extract your `schema.json` or just manually create a `schema.json` file containing your Sanity schema definition. The schema should be in JavaScript object notation format, like this:
+Place a `schema.json` file in your project root containing your schema definition. The schema should be in JavaScript object notation format, like this:
 
 ```json
 [
@@ -103,16 +198,24 @@ Using `sanity schema extract` extract your `schema.json` or just manually create
 
 ### Step 2: Generate the Visualization
 
-Run the schema visualizer:
+Run the schema visualizer with your preferred format:
 
 ```bash
+# Using default schema.club format
 npm run generate
+
+# Using explicit format specification
+npm run generate -- --input-format=schema.club
 ```
 
-Or using the direct command:
+Output example:
 
-```bash
-npx ts-node generate-schema-graph.ts
+```
+🔍 Processing schema using schema.club format...
+📊 Found 105 schema types (23 documents, 82 objects)
+✅ Successfully generated Graphviz DOT file at: /path/to/schema.dot
+📄 To generate PDF: npm run pdf
+🖼️  To generate PNG: npm run png
 ```
 
 This will generate a `schema.dot` file containing the Graphviz representation of your schema.
@@ -187,24 +290,26 @@ The visualizer uses a centralized configuration system in `config.js` that allow
 The `config.js` file contains several configuration objects:
 
 #### Colors (`COLORS`)
+
 Control all colors used in the visualization:
 
 ```javascript
 // Relationship Colors
 DIRECT_REFERENCE: "#2563EB",        // Blue for direct references
-INFERRED_REFERENCE: "#059669",      // Green for inferred references  
+INFERRED_REFERENCE: "#059669",      // Green for inferred references
 ARRAY_REFERENCE: "#DC2626",         // Red for array references
 // ... and many more
 ```
 
 #### Arrow Styles (`ARROW_STYLES`)
+
 Configure arrow appearance:
 
 ```javascript
 // Arrow Head Types
 HEAD_TYPES: {
   NORMAL: "normal",
-  DIAMOND: "diamond", 
+  DIAMOND: "diamond",
   DOT: "dot",
   // ...
 },
@@ -218,13 +323,14 @@ SIZES: {
 ```
 
 #### Typography (`TYPOGRAPHY`)
+
 Control fonts and text sizing:
 
 ```javascript
 // Font Families
 FONTS: {
   PRIMARY: "Arial",
-  SECONDARY: "Helvetica", 
+  SECONDARY: "Helvetica",
   MONOSPACE: "Courier",
 },
 
@@ -237,6 +343,7 @@ SIZES: {
 ```
 
 #### Relationship Configurations (`RELATIONSHIP_CONFIGS`)
+
 Pre-configured style objects for each relationship type:
 
 ```javascript
@@ -252,6 +359,7 @@ DIRECT_REFERENCE: {
 ### Common Customizations
 
 #### Changing the Color Scheme
+
 To change relationship colors, modify the `COLORS` object:
 
 ```javascript
@@ -261,6 +369,7 @@ INFERRED_REFERENCE: "#A855F7",
 ```
 
 #### Adjusting Arrow Styles
+
 To make arrows larger or change their appearance:
 
 ```javascript
@@ -273,18 +382,20 @@ NORMAL: "diamond",  // Use diamond instead of normal arrows
 ```
 
 #### Typography Changes
+
 Customize fonts and sizes:
 
 ```javascript
 // In TYPOGRAPHY.FONTS
 PRIMARY: "Helvetica",  // Use Helvetica instead of Arial
 
-// In TYPOGRAPHY.SIZES  
+// In TYPOGRAPHY.SIZES
 NODE_TITLE: 16,       // Larger node titles
 FIELD_NAME: 12,       // Larger field names
 ```
 
 #### Layout Adjustments
+
 Modify spacing and layout:
 
 ```javascript
@@ -299,11 +410,12 @@ DIRECTION: "LR",          // Left-to-right instead of top-to-bottom
 You can create different visual themes by modifying multiple configuration sections:
 
 #### Dark Theme Example
+
 ```javascript
 // Dark color scheme
 COLORS: {
   DOCUMENT_NODE_BG: "#1F2937",
-  DOCUMENT_NODE_BORDER: "#374151", 
+  DOCUMENT_NODE_BORDER: "#374151",
   FIELD_BG: "#111827",
   FIELD_TEXT: "#F9FAFB",
   // ...
@@ -311,6 +423,7 @@ COLORS: {
 ```
 
 #### Minimal Theme Example
+
 ```javascript
 // Simple, minimal styling
 COLORS: {
@@ -343,20 +456,41 @@ For more complex customizations, you can:
 - **Keep backups**: Save working configurations before major changes
 - **Document custom settings**: Comment your changes for future reference
 
+## Project Architecture
+
+The project is built with a modular architecture that makes it easy to add support for new schema formats:
+
+### Core Components
+
+- **Parser Layer**: Handles different input formats
+  - `BaseSchemaParser`: Abstract base class for all parsers
+  - `SchemaClubParser`: Handles schema.club format
+  - `SanityParser`: Placeholder for Sanity format (coming soon)
+- **Converter Layer**: Transforms parsed schema to Graphviz DOT format
+  - `GraphConverter`: Main conversion logic with relationship detection
+- **Configuration**: Centralized styling and layout configuration in `config.js`
+
+### Adding a New Input Format
+
+1. Create a new parser class extending `BaseSchemaParser`
+2. Implement the `parse()` method to return a `ParsedSchema` object
+3. Add the format to the `createParser()` factory function
+4. Update the `InputFormat` type definition
+5. Add documentation and tests
+
 ## Project Structure
 
 ```
-sanity-schema-visualizer/
-├── generate-schema-graph.ts    # Main visualizer script
+schema-visualizer/
+├── generate-schema-graph.ts    # Main entry point with CLI and all logic
 ├── config.js                   # Centralized styling and configuration
-├── schema.json                 # Your Sanity schema input file
+├── schema.json                 # Your schema input file
 ├── schema.dot                  # Generated Graphviz DOT file
 ├── schema.pdf                  # Generated PDF diagram
 ├── schema.png                  # Generated PNG diagram
-├── schema.svg                  # Generated SVG diagram
-├── package.json               # Node.js dependencies
+├── package.json               # Node.js dependencies and scripts
 ├── tsconfig.json             # TypeScript configuration
-└── README.md                 # This file
+└── README.md                 # This documentation
 ```
 
 ## Advanced Customization
@@ -364,7 +498,7 @@ sanity-schema-visualizer/
 For advanced users who want to modify the core functionality:
 
 - **Relationship Detection Logic**: Edit `generate-schema-graph.ts` to customize how relationships are detected
-- **Node Generation**: Modify the `createNode` method to change how schema types are displayed  
+- **Node Generation**: Modify the `createNode` method to change how schema types are displayed
 - **Edge Creation**: Customize the `createEdgeIfNotExists` method for different connection styles
 - **Schema Parsing**: Enhance the schema parsing logic to handle custom Sanity field types
 
@@ -383,6 +517,16 @@ For advanced users who want to modify the core functionality:
 
 - Run `npm install` to install dependencies
 - Make sure you're in the project directory
+
+**Error: "Unsupported input format"**
+
+- Check that you're using a supported format: `schema.club` or `sanity`
+- Use `npm run generate -- --help` to see all available options
+
+**Sanity format shows "not yet implemented"**
+
+- The Sanity format parser is planned for a future release
+- Use `schema.club` format in the meantime (this is the default)
 
 **Relationships not showing up**
 

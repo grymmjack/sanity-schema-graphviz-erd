@@ -5,6 +5,8 @@
   "main": "index.js",
   "scripts": {
     "generate": "npx ts-node --esm generate-schema-graph.ts",
+    "generate:schema.club": "npx ts-node --esm generate-schema-graph.ts -- --input-format=schema.club",
+    "generate:sanity": "npx ts-node --esm generate-schema-graph.ts -- --input-format=sanity",
     "pdf": "npm run generate && dot -Tpdf schema.dot -o schema.pdf",
     "png": "npm run generate && dot -Tpng schema.dot -o schema.png",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -22,7 +24,9 @@
   },
   "homepage": "https://github.com/luxome-rickc/sanity-schema-visualizer#readme",
   "dependencies": {
+    "@types/minimist": "^1.2.5",
     "@types/node": "^24.3.0",
+    "minimist": "^1.2.8",
     "ts-graphviz": "^3.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2"
