@@ -4,12 +4,21 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "generate": "npx ts-node --esm generate-schema-graph.ts",
-    "generate:schema.club": "npx ts-node --esm generate-schema-graph.ts -- --input-format=schema.club",
-    "generate:sanity": "npx ts-node --esm generate-schema-graph.ts -- --input-format=sanity",
+    "generate": "npx ts-node --esm generate-schema-graph.ts --input-format sanity",
+    "generate:sanity": "npx ts-node --esm generate-schema-graph.ts --input-format sanity",
+    "generate:schema.club": "npx ts-node --esm generate-schema-graph.ts --input-format schema.club",
+    "generate:test:sanity": "npx ts-node --esm generate-schema-graph.ts --input-format sanity --test",
+    "generate:test:schema.club": "npx ts-node --esm generate-schema-graph.ts --input-format schema.club --test",
     "pdf": "npm run generate && dot -Tpdf schema.dot -o schema.pdf",
     "png": "npm run generate && dot -Tpng schema.dot -o schema.png",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "png:neato": "npm run generate && neato -Tpng schema.dot -o schema-neato.png",
+    "png:fdp": "npm run generate && fdp -Tpng schema.dot -o schema-fdp.png",
+    "png:sfdp": "npm run generate && sfdp -Tpng schema.dot -o schema-sfdp.png",
+    "png:twopi": "npm run generate && twopi -Tpng schema.dot -o schema-twopi.png",
+    "png:all": "npm run generate && dot -Tpng schema.dot -o schema-dot.png && neato -Tpng schema.dot -o schema-neato.png && fdp -Tpng schema.dot -o schema-fdp.png && sfdp -Tpng schema.dot -o schema-sfdp.png && twopi -Tpng schema.dot -o schema-twopi.png && echo '🎨 Generated 5 different layout versions!'",
+    "png:test:sanity": "npm run generate:test:sanity && dot -Tpng schema-sanity.dot -o schema-sanity-dot.png && neato -Tpng schema-sanity.dot -o schema-sanity-neato.png && fdp -Tpng schema-sanity.dot -o schema-sanity-fdp.png && sfdp -Tpng schema-sanity.dot -o schema-sanity-sfdp.png && twopi -Tpng schema-sanity.dot -o schema-sanity-twopi.png && echo '🎨 Generated 5 Sanity layout versions!'",
+    "png:test:schema.club": "npm run generate:test:schema.club && dot -Tpng schema-schemaclub.dot -o schema-schemaclub-dot.png && neato -Tpng schema-schemaclub.dot -o schema-schemaclub-neato.png && fdp -Tpng schema-schemaclub.dot -o schema-schemaclub-fdp.png && sfdp -Tpng schema-schemaclub.dot -o schema-schemaclub-sfdp.png && twopi -Tpng schema-schemaclub.dot -o schema-schemaclub-twopi.png && echo '🎨 Generated 5 Schema.club layout versions!'",
+    "test": "echo '🧪 Testing both formats...' && npm run generate:test:sanity && npm run generate:test:schema.club && npm run png:test:sanity && npm run png:test:schema.club && echo '✅ All tests completed! Check schema-sanity-*.png and schema-schemaclub-*.png files.'"
   },
   "repository": {
     "type": "git",

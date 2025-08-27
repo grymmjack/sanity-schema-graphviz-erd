@@ -5,39 +5,39 @@
 
 // Color Palette
 export const COLORS = {
-  // Relationship Colors
-  DIRECT_REFERENCE: "#2563EB", // Blue - solid direct references
-  INFERRED_REFERENCE: "#059669", // Green - dashed inferred references
-  ARRAY_REFERENCE: "#DC2626", // Red - bold array references
-  INFERRED_ARRAY_REFERENCE: "#F59E0B", // Orange - dashed inferred array references
-  OBJECT_COMPOSITION: "#0D9488", // Teal - bold object compositions
-  ARRAY_COMPOSITION: "#0D9488", // Teal - bold array compositions
+  // Relationship Colors (with transparency)
+  DIRECT_REFERENCE: "#2563EB80", // Blue with 50% transparency
+  INFERRED_REFERENCE: "#05966980", // Green with 50% transparency
+  ARRAY_REFERENCE: "#DC262680", // Red with 50% transparency
+  INFERRED_ARRAY_REFERENCE: "#F59E0B80", // Orange with 50% transparency
+  OBJECT_COMPOSITION: "#0D948880", // Teal with 50% transparency
+  ARRAY_COMPOSITION: "#0D948880", // Teal with 50% transparency
 
-  // Node Colors
+  // Node Colors (keep solid)
   DOCUMENT_NODE_BG: "#F8FAFC", // Light gray background for document nodes
   DOCUMENT_NODE_BORDER: "#1E293B", // Dark gray border for document nodes
   OBJECT_NODE_BG: "#FFFFFF", // White background for object nodes
   OBJECT_NODE_BORDER: "#64748B", // Medium gray border for object nodes
 
-  // Field Colors
+  // Field Colors (keep solid)
   FIELD_BG: "#FFFFFF", // White background for fields
   FIELD_TEXT: "#1F2937", // Dark gray text for fields
   FIELD_TYPE_TEXT: "#6B7280", // Medium gray text for field types
 
-  // Default Edge Color
-  DEFAULT_EDGE: "#1F2937", // Dark gray for default edges
+  // Default Edge Color (semi-transparent)
+  DEFAULT_EDGE: "#66666680", // Semi-transparent dark gray for default edges
 };
 
 // Line Styles and Thickness
 export const LINE_STYLES = {
   // Line Thickness (penwidth)
-  DIRECT_REFERENCE: 2.5,
-  INFERRED_REFERENCE: 2.0,
-  ARRAY_REFERENCE: 2.8,
-  INFERRED_ARRAY_REFERENCE: 2.3,
-  OBJECT_COMPOSITION: 2.6,
-  ARRAY_COMPOSITION: 2.5,
-  DEFAULT: 2.0,
+  DIRECT_REFERENCE: 1.5,
+  INFERRED_REFERENCE: 1.0,
+  ARRAY_REFERENCE: 1.8,
+  INFERRED_ARRAY_REFERENCE: 1.3,
+  OBJECT_COMPOSITION: 1.6,
+  ARRAY_COMPOSITION: 1.5,
+  DEFAULT: 1.0,
 
   // Line Styles
   SOLID: "solid",

@@ -37,6 +37,7 @@ interface ConverterOptions {
   inputFormat: InputFormat;
   schemaPath: string;
   outputPath: string;
+  isTestMode: boolean;
 }
 
 // --- Base Parser Classes ---
@@ -112,21 +113,420 @@ class SchemaClubParser extends BaseSchemaParser {
       throw new Error("Schema.club format expects an array of schema types");
     }
 
-    // The current schema appears to follow the Sanity schema structure
-    // so we can use it as-is
-    const types: SchemaType[] = rawSchema;
+    // Transform schema.club format to our internal format
+    const types: SchemaType[] = rawSchema
+      .filter((item) => item.name && item.type)
+      .map((item) => this.transformSchemaClubType(item));
 
     return this.createParsedSchema(types, (type) => type.type === "document");
   }
+
+  private transformSchemaClubType(schemaClubType: any): SchemaType {
+    const transformed: SchemaType = {
+      name: schemaClubType.name,
+      type: schemaClubType.type,
+      title: schemaClubType.title,
+    };
+
+    // Transform fields if they exist
+    if (schemaClubType.fields && Array.isArray(schemaClubType.fields)) {
+      transformed.fields = schemaClubType.fields
+        .map((field: any) => this.transformSchemaClubField(field))
+        .filter(Boolean);
+    }
+
+    return transformed;
+  }
+
+  private transformSchemaClubField(field: any): SchemaField | null {
+    if (!field || !field.name || !field.type) {
+      return null;
+    }
+
+    const transformedField: SchemaField = {
+      name: field.name,
+      type: field.type,
+      title: field.title,
+    };
+
+    // Handle references - infer target from field name
+    if (field.type === "reference") {
+      // Try to infer reference target from field name
+      const possibleTarget = this.inferReferenceTarget(field.name, field.title);
+      if (possibleTarget) {
+        transformedField.to = [{ type: possibleTarget }];
+      }
+    }
+
+    // Handle arrays
+    if (field.type === "array" && field.of) {
+      transformedField.of = field.of
+        .map((item: any) => this.transformSchemaClubField(item))
+        .filter(Boolean);
+    }
+
+    // Handle nested fields for objects
+    if (field.fields && Array.isArray(field.fields)) {
+      transformedField.fields = field.fields
+        .map((subField: any) => this.transformSchemaClubField(subField))
+        .filter(Boolean);
+    }
+
+    return transformedField;
+  }
+
+  private inferReferenceTarget(
+    fieldName: string,
+    fieldTitle?: string
+  ): string | null {
+    // Common patterns for reference field names
+    const patterns = [
+      // Remove common suffixes
+      fieldName.replace(/ref$|id$|_ref$|_id$/i, ""),
+      // Use title if available
+      fieldTitle ? fieldTitle.toLowerCase().replace(/\s+/g, "") : null,
+      // Use field name as-is
+      fieldName,
+      // Plural to singular
+      fieldName.endsWith("s") ? fieldName.slice(0, -1) : null,
+    ].filter(Boolean) as string[];
+
+    // Return the first non-empty pattern
+    return patterns.find((pattern) => pattern && pattern.length > 0) || null;
+  }
 }
 
-// --- Sanity Parser (placeholder) ---
+// --- Sanity Parser ---
 
 class SanityParser extends BaseSchemaParser {
   parse(): ParsedSchema {
-    // TODO: Implement Sanity schema parsing
-    // This will be different from schema.club format
-    throw new Error("Sanity format parser not yet implemented. Coming soon!");
+    const content = this.loadFileContent();
+    const rawSchema = this.parseJsonOrJs(content);
+
+    // Validate that it's an array of schema types
+    if (!Array.isArray(rawSchema)) {
+      throw new Error("Sanity format expects an array of schema types");
+    }
+
+    // Check if this is the complex Sanity format or simple format
+    const sampleItem = rawSchema[0];
+    const isComplexFormat =
+      sampleItem && sampleItem.attributes && !sampleItem.fields;
+
+    if (isComplexFormat) {
+      // Complex Sanity format with nested attributes
+      const types: SchemaType[] = rawSchema
+        .filter((item) => item.name && item.type)
+        .map((item) => this.transformSanityType(item));
+
+      return this.createParsedSchema(types, (type) => type.type === "document");
+    } else {
+      // Simple format (same as schema.club) - delegate to schema.club logic
+      const types: SchemaType[] = rawSchema
+        .filter((item) => item.name && item.type)
+        .map((item) => this.transformSimpleType(item));
+
+      return this.createParsedSchema(types, (type) => type.type === "document");
+    }
+  }
+
+  // Handle simple schema.club-style format
+  private transformSimpleType(simpleType: any): SchemaType {
+    const transformed: SchemaType = {
+      name: simpleType.name,
+      type: simpleType.type,
+      title: simpleType.title,
+    };
+
+    // Transform fields if they exist
+    if (simpleType.fields && Array.isArray(simpleType.fields)) {
+      transformed.fields = simpleType.fields
+        .map((field: any) => this.transformSimpleField(field))
+        .filter(Boolean);
+    }
+
+    return transformed;
+  }
+
+  private transformSimpleField(field: any): SchemaField | null {
+    if (!field || !field.name || !field.type) {
+      return null;
+    }
+
+    const transformedField: SchemaField = {
+      name: field.name,
+      type: field.type,
+      title: field.title,
+    };
+
+    // Handle explicit references with 'to' property
+    if (field.type === "reference" && field.to && Array.isArray(field.to)) {
+      transformedField.to = field.to;
+    } else if (field.type === "reference") {
+      // Handle references without explicit 'to' - infer from name
+      const possibleTarget = this.inferReferenceTarget(field.name, field.title);
+      if (possibleTarget) {
+        transformedField.to = [{ type: possibleTarget }];
+      }
+    }
+
+    // Handle arrays
+    if (field.type === "array" && field.of) {
+      transformedField.of = field.of
+        .map((item: any) => this.transformSimpleField(item))
+        .filter(Boolean);
+    }
+
+    // Handle nested fields for objects
+    if (field.fields && Array.isArray(field.fields)) {
+      transformedField.fields = field.fields
+        .map((subField: any) => this.transformSimpleField(subField))
+        .filter(Boolean);
+    }
+
+    return transformedField;
+  }
+
+  private inferReferenceTarget(
+    fieldName: string,
+    fieldTitle?: string
+  ): string | null {
+    // Common patterns for reference field names
+    const patterns = [
+      // Remove common suffixes
+      fieldName.replace(/ref$|id$|_ref$|_id$/i, ""),
+      // Use title if available
+      fieldTitle ? fieldTitle.toLowerCase().replace(/\s+/g, "") : null,
+      // Use field name as-is
+      fieldName,
+      // Plural to singular
+      fieldName.endsWith("s") ? fieldName.slice(0, -1) : null,
+    ].filter(Boolean) as string[];
+
+    // Return the first non-empty pattern
+    return patterns.find((pattern) => pattern && pattern.length > 0) || null;
+  }
+
+  private transformSanityType(sanityType: any): SchemaType {
+    // Determine the actual type from Sanity's nested structure
+    let actualType = "object"; // default
+    if (sanityType.type) {
+      if (typeof sanityType.type === "string") {
+        actualType = sanityType.type;
+      } else if (
+        sanityType.type.value &&
+        typeof sanityType.type.value === "string"
+      ) {
+        actualType = sanityType.type.value;
+      }
+    }
+
+    // For Sanity "type" definitions, look deeper into the value structure
+    if (actualType === "type" && sanityType.value && sanityType.value.type) {
+      actualType = sanityType.value.type;
+    }
+
+    const transformed: SchemaType = {
+      name: sanityType.name,
+      type: actualType,
+      title: sanityType.title,
+    };
+
+    // Transform attributes to fields - look in the right place for attributes
+    const attributesSource =
+      sanityType.attributes ||
+      (sanityType.value && sanityType.value.attributes);
+    if (attributesSource) {
+      transformed.fields = [];
+
+      for (const [fieldName, fieldDef] of Object.entries(attributesSource)) {
+        // Skip internal Sanity fields that start with _
+        if (fieldName.startsWith("_")) {
+          continue;
+        }
+
+        const field = this.transformSanityField(fieldName, fieldDef as any);
+        if (field) {
+          transformed.fields.push(field);
+        }
+      }
+    }
+
+    return transformed;
+  }
+
+  private transformSanityField(
+    fieldName: string,
+    fieldDef: any
+  ): SchemaField | null {
+    if (!fieldDef || !fieldDef.value) {
+      return null;
+    }
+
+    const field: SchemaField = {
+      name: fieldName,
+      type: this.getFieldType(fieldDef.value),
+    };
+
+    // Handle references - check both top level and nested in value
+    if (fieldDef.dereferencesTo || fieldDef.value.dereferencesTo) {
+      field.type = "reference";
+      const targetType =
+        fieldDef.dereferencesTo || fieldDef.value.dereferencesTo;
+      field.to = [{ type: targetType }];
+    }
+
+    // Check for deeply nested references in the entire field definition
+    const allRefs = this.extractAllReferencesRecursive([fieldDef]);
+    if (allRefs.length > 0 && !field.to) {
+      field.type = "reference";
+      field.to = allRefs.map((ref) => ({ type: ref }));
+    }
+
+    // Handle arrays
+    if (fieldDef.value.type === "array" && fieldDef.value.of) {
+      field.type = "array";
+      field.of = this.transformArrayItems(fieldDef.value.of);
+    }
+
+    // Handle objects - check if it's a reference object first
+    if (fieldDef.value.type === "object") {
+      if (fieldDef.value.dereferencesTo) {
+        // This is actually a reference disguised as an object
+        field.type = "reference";
+        field.to = [{ type: fieldDef.value.dereferencesTo }];
+      } else if (fieldDef.value.attributes) {
+        // This is a regular object with nested fields
+        field.type = "object";
+        field.fields = [];
+
+        for (const [subFieldName, subFieldDef] of Object.entries(
+          fieldDef.value.attributes
+        )) {
+          if (!subFieldName.startsWith("_")) {
+            const subField = this.transformSanityField(
+              subFieldName,
+              subFieldDef as any
+            );
+            if (subField) {
+              field.fields.push(subField);
+            }
+          }
+        }
+      }
+    }
+
+    // Debug: log references found for this field
+    // if (field.to && field.to.length > 0) {
+    //   console.log(`DEBUG: Field '${fieldName}' references:`, field.to.map(t => t.type));
+    // }
+
+    return field;
+  }
+
+  private transformArrayItems(arrayOf: any): SchemaField[] {
+    // Handle case where 'of' is a single object (Sanity format)
+    if (!Array.isArray(arrayOf)) {
+      arrayOf = [arrayOf];
+    }
+
+    return arrayOf
+      .map((item: any, index: number) => {
+        // Direct reference case
+        if (item.dereferencesTo) {
+          return {
+            type: "reference",
+            to: [{ type: item.dereferencesTo }],
+          };
+        }
+
+        // Union type case - check all union options
+        if (item.type === "union" && item.of && Array.isArray(item.of)) {
+          const references = this.extractAllReferencesRecursive(item.of);
+          if (references.length > 0) {
+            return {
+              type: "reference",
+              to: references.map((ref) => ({ type: ref })),
+            };
+          }
+        }
+
+        // Object with nested references
+        if (item.type === "object") {
+          const nestedRefs = this.extractAllReferencesRecursive([item]);
+          if (nestedRefs.length > 0) {
+            return {
+              type: "reference",
+              to: nestedRefs.map((ref) => ({ type: ref })),
+            };
+          }
+        }
+
+        if (item.type) {
+          return {
+            type: item.type,
+          };
+        }
+
+        if (item.value) {
+          return {
+            type: this.getFieldType(item.value),
+          };
+        }
+
+        return null;
+      })
+      .filter(Boolean) as SchemaField[];
+  }
+
+  private extractAllReferencesRecursive(nodes: any[]): string[] {
+    const references: string[] = [];
+
+    for (const node of nodes) {
+      if (!node || typeof node !== "object") continue;
+
+      // Direct reference
+      if (node.dereferencesTo) {
+        references.push(node.dereferencesTo);
+      }
+
+      // Inline type reference
+      if (node.type === "inline" && node.name) {
+        references.push(node.name);
+      }
+
+      // Check nested value
+      if (node.value) {
+        references.push(...this.extractAllReferencesRecursive([node.value]));
+      }
+
+      // Check union 'of' arrays
+      if (node.of && Array.isArray(node.of)) {
+        references.push(...this.extractAllReferencesRecursive(node.of));
+      }
+
+      // Check object attributes
+      if (node.attributes) {
+        for (const [key, attr] of Object.entries(node.attributes)) {
+          references.push(...this.extractAllReferencesRecursive([attr]));
+        }
+      }
+    }
+
+    return [...new Set(references)]; // Remove duplicates
+  }
+
+  private getFieldType(value: any): string {
+    if (!value || !value.type) {
+      return "unknown";
+    }
+
+    // Handle basic types
+    if (typeof value.type === "string") {
+      return value.type;
+    }
+
+    return "unknown";
   }
 }
 
@@ -162,17 +562,24 @@ class GraphConverter {
   }
 
   private initializeGraph(): void {
-    // Initialize the directed graph with some global attributes for better layout.
+    // Initialize the directed graph with better layout settings for complex diagrams
     this.graph = new Digraph("SchemaGraph", {
       [_.rankdir]: "TB" as any,
       [_.splines]: "curved" as any,
-      [_.nodesep]: CONFIG.GRAPH_CONFIG.nodesep,
-      [_.ranksep]: CONFIG.GRAPH_CONFIG.ranksep,
+      [_.nodesep]: 0.8,
+      [_.ranksep]: 1.5,
       [_.fontname]: CONFIG.TYPOGRAPHY.FONTS.PRIMARY,
       [_.fontsize]: CONFIG.TYPOGRAPHY.SIZES.DEFAULT,
-      [_.concentrate]: true, // Merge edges when possible
-      [_.overlap]: "false" as any,
-      [_.pack]: true, // Pack nodes more tightly
+      [_.concentrate]: true, // Merge parallel edges
+      [_.overlap]: "scale" as any,
+      [_.pack]: true,
+      [_.packmode]: "node" as any,
+      [_.maxiter]: 500,
+      [_.ordering]: "out" as any,
+      [_.compound]: false,
+      [_.bgcolor]: "white" as any,
+      [_.pad]: 0.5, // Add padding around the graph
+      [_.dpi]: 96, // Set DPI for better quality
     });
 
     // Set default styles for all nodes and edges.
@@ -182,16 +589,20 @@ class GraphConverter {
       [_.fillcolor]: CONFIG.COLORS.OBJECT_NODE_BG,
       [_.color]: CONFIG.COLORS.OBJECT_NODE_BORDER,
       [_.fontname]: CONFIG.GRAPH_CONFIG.node.fontname,
-      [_.fontsize]: CONFIG.GRAPH_CONFIG.node.fontsize,
+      [_.fontsize]: 9, // Slightly smaller font for better fit
       [_.penwidth]: 1.2,
+      [_.margin]: "0.1,0.05" as any,
     });
     this.graph.edge({
       [_.fontname]: CONFIG.GRAPH_CONFIG.edge.fontname,
-      [_.fontsize]: CONFIG.GRAPH_CONFIG.edge.fontsize,
-      [_.penwidth]: CONFIG.GRAPH_CONFIG.edge.penwidth,
-      [_.color]: CONFIG.GRAPH_CONFIG.edge.color,
-      [_.arrowsize]: CONFIG.GRAPH_CONFIG.edge.arrowsize,
+      [_.fontsize]: 8, // Smaller edge labels
+      [_.penwidth]: 1.2, // Thinner edges for less visual clutter
+      [_.color]: "#66666680" as any, // Semi-transparent gray (80 = ~50% opacity)
+      [_.arrowsize]: 0.7, // Smaller arrows
       [_.arrowhead]: "normal" as any,
+      [_.len]: 2.0,
+      [_.labeldistance]: 2.0, // Distance of edge labels from edges
+      [_.labelangle]: 0, // Angle of edge labels
     });
   }
 
@@ -213,6 +624,110 @@ class GraphConverter {
 
     // Serialize the graph object to a DOT string.
     return toDot(this.graph);
+  }
+
+  private addRankConstraints(): void {
+    // Group document types at the top
+    const documentTypeNames = Array.from(this.schema.documentTypes);
+    if (documentTypeNames.length > 0) {
+      const sourceSubgraph = this.graph.subgraph("", {
+        [_.rank]: "source" as any,
+      });
+      documentTypeNames.forEach((name) => sourceSubgraph.node(name));
+    }
+
+    // Group core content types in the middle
+    const coreTypes = ["product", "collection", "page", "home"];
+    const existingCoreTypes = coreTypes.filter((name) =>
+      this.schema.allTypeNames.has(name)
+    );
+    if (existingCoreTypes.length > 0) {
+      const coreSubgraph = this.graph.subgraph("", {
+        [_.rank]: "same" as any,
+      });
+      existingCoreTypes.forEach((name) => coreSubgraph.node(name));
+    }
+
+    // Group utility types towards the bottom
+    const utilityTypes = ["slug", "color", "seo", "menu", "colorTheme"];
+    const existingUtilityTypes = utilityTypes.filter((name) =>
+      this.schema.allTypeNames.has(name)
+    );
+    if (existingUtilityTypes.length > 0) {
+      const utilitySubgraph = this.graph.subgraph("", {
+        [_.rank]: "sink" as any,
+      });
+      existingUtilityTypes.forEach((name) => utilitySubgraph.node(name));
+    }
+  }
+
+  private createClusters(): void {
+    // Create subgraphs for different type categories to improve layout
+    const documentTypes = this.schema.types.filter(
+      (type) => type.type === "document"
+    );
+    const coreTypes = this.schema.types.filter(
+      (type) =>
+        type.type === "object" &&
+        [
+          "product",
+          "collection",
+          "page",
+          "home",
+          "colorTheme",
+          "seo",
+          "menu",
+        ].includes(type.name)
+    );
+    const contentTypes = this.schema.types.filter(
+      (type) =>
+        type.type === "object" &&
+        ["blockModule", "blocks", "hero", "testimonial", "gridItem"].includes(
+          type.name
+        )
+    );
+    const utilityTypes = this.schema.types.filter(
+      (type) =>
+        type.type === "object" &&
+        ["slug", "color", "priceRange", "inventory"].includes(type.name)
+    );
+
+    if (documentTypes.length > 0) {
+      const docCluster = this.graph.subgraph(`cluster_documents`, {
+        [_.label]: "Documents",
+        [_.style]: "filled" as any,
+        [_.fillcolor]: "#f0f9ff" as any,
+        [_.pencolor]: "#0369a1" as any,
+        [_.rank]: "same" as any,
+      });
+    }
+
+    if (coreTypes.length > 0) {
+      const coreCluster = this.graph.subgraph(`cluster_core`, {
+        [_.label]: "Core Types",
+        [_.style]: "filled" as any,
+        [_.fillcolor]: "#f0fdf4" as any,
+        [_.pencolor]: "#15803d" as any,
+      });
+    }
+
+    if (contentTypes.length > 0) {
+      const contentCluster = this.graph.subgraph(`cluster_content`, {
+        [_.label]: "Content Types",
+        [_.style]: "filled" as any,
+        [_.fillcolor]: "#fefce8" as any,
+        [_.pencolor]: "#ca8a04" as any,
+      });
+    }
+
+    if (utilityTypes.length > 0) {
+      const utilityCluster = this.graph.subgraph(`cluster_utility`, {
+        [_.label]: "Utility Types",
+        [_.style]: "filled" as any,
+        [_.fillcolor]: "#fdf2f8" as any,
+        [_.pencolor]: "#be185d" as any,
+      });
+    }
   }
 
   private createNode(type: SchemaType): void {
@@ -332,6 +847,7 @@ class GraphConverter {
       if (field.to && field.to.length > 0) {
         // Standard approach: explicit 'to' targets
         field.to.forEach((target: { type: string }) => {
+          // console.log(`DEBUG: Processing reference from ${sourceNodeId}.${sourceFieldId} -> ${target.type}`);
           if (this.schema.allTypeNames.has(target.type)) {
             const targetSchema = this.schema.types.find(
               (t) => t.name === target.type
@@ -341,6 +857,7 @@ class GraphConverter {
               (targetSchema.type === "document" ||
                 targetSchema.type === "object")
             ) {
+              // console.log(`DEBUG: Creating edge ${sourceNodeId} -> ${target.type}`);
               this.createEdgeIfNotExists(
                 sourceNodeId,
                 target.type,
@@ -361,7 +878,11 @@ class GraphConverter {
                 },
                 `${sourceFieldId}_left:w` // Use west (left) side of the field cell
               );
+            } else {
+              // console.log(`DEBUG: Target ${target.type} not found or not document/object type`);
             }
+          } else {
+            // console.log(`DEBUG: Target type ${target.type} not in allTypeNames set`);
           }
         });
       } else {
@@ -594,15 +1115,19 @@ class GraphConverter {
 function parseArguments(): ConverterOptions {
   const args = minimist(process.argv.slice(2), {
     string: ["input-format"],
+    boolean: ["test"],
     default: {
-      "input-format": "schema.club",
+      "input-format": "sanity", // Current schema.json is in Sanity format
+      test: false,
     },
     alias: {
       f: "input-format",
+      t: "test",
     },
   });
 
   const inputFormat = args["input-format"] as InputFormat;
+  const isTestMode = args["test"] as boolean;
   const supportedFormats: InputFormat[] = ["schema.club", "sanity"];
 
   if (!supportedFormats.includes(inputFormat)) {
@@ -614,33 +1139,94 @@ function parseArguments(): ConverterOptions {
     process.exit(1);
   }
 
+  // Smart schema file detection
+  let schemaPath: string;
+  let outputPath: string;
+
+  if (isTestMode) {
+    // Test mode: use format-specific files and outputs
+    const formatSpecificFiles = {
+      sanity: "schema-sanity.json",
+      "schema.club": "schema-schema.club.json",
+    };
+
+    const specificFile = formatSpecificFiles[inputFormat];
+    const specificPath = path.join(process.cwd(), specificFile);
+
+    if (fs.existsSync(specificPath)) {
+      schemaPath = specificPath;
+      outputPath = path.join(
+        process.cwd(),
+        `schema-${inputFormat.replace(".", "")}.dot`
+      );
+    } else {
+      // Fallback to default file in test mode
+      schemaPath = path.join(process.cwd(), "schema.json");
+      outputPath = path.join(
+        process.cwd(),
+        `schema-${inputFormat.replace(".", "")}.dot`
+      );
+    }
+  } else {
+    // Normal mode: use format-specific files if available, otherwise default
+    const formatSpecificFiles = {
+      sanity: "schema-sanity.json",
+      "schema.club": "schema-schema.club.json",
+    };
+
+    const specificFile = formatSpecificFiles[inputFormat];
+    const specificPath = path.join(process.cwd(), specificFile);
+
+    if (fs.existsSync(specificPath)) {
+      schemaPath = specificPath;
+    } else {
+      schemaPath = path.join(process.cwd(), "schema.json");
+    }
+
+    outputPath = path.join(process.cwd(), "schema.dot");
+  }
+
   return {
     inputFormat,
-    schemaPath: path.join(process.cwd(), "schema.json"),
-    outputPath: path.join(process.cwd(), "schema.dot"),
+    schemaPath,
+    outputPath,
+    isTestMode,
   };
 }
 
 function showHelp(): void {
   console.log(`
-Usage: npm run generate [-- --input-format=FORMAT]
+Usage: npm run generate [-- --input-format=FORMAT] [--test]
 
 Options:
-  --input-format, -f   Input schema format (default: schema.club)
-                       Supported formats: schema.club, sanity
+  --input-format, -f   Input schema format (default: sanity)
+                       Supported formats: sanity, schema.club
+  --test, -t          Test mode with format-specific output files
+
+File Detection:
+  Normal mode:
+    - Looks for schema-sanity.json for sanity format
+    - Looks for schema-schema.club.json for schema.club format  
+    - Falls back to schema.json if format-specific file not found
+    
+  Test mode:
+    - Same file detection as normal mode
+    - Outputs to schema-sanity.dot or schema-schemaclub.dot
 
 Examples:
-  npm run generate                                 # Uses schema.club format (default)
-  npm run generate -- --input-format=schema.club  # Explicit schema.club format  
-  npm run generate -- --input-format=sanity       # Uses sanity format (coming soon)
-  npm run generate -- -f schema.club              # Short option
+  npm run generate                                 # Uses sanity format, schema.json
+  npm run generate -- --input-format=sanity       # Explicit sanity format
+  npm run generate -- --input-format=schema.club  # Uses schema.club format  
+  npm run generate -- --test --input-format=sanity # Test mode with sanity format
+  npm test                                         # Runs comprehensive test of both formats
 
 Description:
   Generates a Graphviz DOT file from your schema definition.
-  The output file 'schema.dot' can be converted to PDF or PNG using:
+  The output file can be converted to PDF or PNG using:
   
   npm run pdf    # Converts to schema.pdf
   npm run png    # Converts to schema.png
+  npm test       # Tests both formats and generates all variants
 `);
 }
 
@@ -673,6 +1259,11 @@ function main() {
 
   try {
     console.log(`🔍 Processing schema using ${options.inputFormat} format...`);
+    console.log(`📁 Schema file: ${path.basename(options.schemaPath)}`);
+    console.log(`📤 Output file: ${path.basename(options.outputPath)}`);
+    if (options.isTestMode) {
+      console.log(`🧪 Test mode enabled`);
+    }
 
     // Parse the schema using the appropriate parser
     const parser = createParser(options.inputFormat, options.schemaPath);

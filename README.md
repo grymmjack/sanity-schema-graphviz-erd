@@ -1,12 +1,24 @@
 # Sanity Schema Visualizer
 
-A powerful tool that converts schema definitions into professional Entity Relationship (ER) diagrams. This flexible visualizer supports multiple input formats and automatically detects relationships between your schema types to generate beautiful, connected diagrams that help you understand your content structure at a glance.
+A powerful tool that converts schema definitions into professional Entity Relationship (ER) diagrams. This flexible visualizer supports ## Choosing the Right Layout
+
+With complex schemas (90+ relationships), different layout algorithms work better for different use cases:
+
+- **`dot` (default)**: Hierarchical top-down layout. Best for understanding data flow and dependencies.
+- **`neato`**: Spring-model layout. Good for seeing natural clusters and groupings.
+- **`fdp`**: Force-directed with clustering. Emphasizes strongly connected components.
+- **`sfdp`**: Scalable force-directed. Best for very large schemas (100+ nodes).
+- **`twopi`**: Radial layout with central hub. Good when you have a central entity with many connections.
+
+**💡 Tip**: Start with `npm run png:all` to generate all layouts, then choose the one that best shows your schema's structure!
+
+## Command-Line Optionsultiple input formats and automatically detects relationships between your schema types to generate beautiful, connected diagrams that help you understand your content structure at a glance.
 
 ## Features
 
 - 🔄 **Multiple Input Formats**: Support for different schema formats
-  - `schema.club` (default) - Current format used by this project (get this from export on https://schema.club)
-  - `sanity` (coming soon) - Native Sanity Studio schema format
+  - `sanity` (default) - Native Sanity Studio schema format (from `sanity schema extract`)
+  - `schema.club` - Alternative schema format (get this from export on https://schema.club)
 - 🔗 **Automatic Relationship Detection**: Identifies references between schema types and draws connections
 - 🎨 **Professional ER Diagram Styling**: Clean, vertical layout with bold titles and clear typography
 - 🌈 **Color-Coded Relationships**: Different colors and styles for various relationship types
@@ -67,7 +79,7 @@ npm install
 
 ### Basic Usage
 
-Generate ERD using the default `schema.club` format:
+Generate ERD using the default `sanity` format:
 
 ```bash
 npm run generate
@@ -78,11 +90,11 @@ npm run generate
 Generate ERD using a specific input format:
 
 ```bash
-# Using schema.club format (default)
-npm run generate -- --input-format=schema.club
-
-# Using sanity format (coming soon)
+# Using sanity format (default)
 npm run generate -- --input-format=sanity
+
+# Using schema.club format
+npm run generate -- --input-format=schema.club
 ```
 
 ### Convenience Scripts
@@ -90,27 +102,41 @@ npm run generate -- --input-format=sanity
 Quick commands for specific formats:
 
 ```bash
-# Generate using schema.club format
-npm run generate:schema.club
-
 # Generate using sanity format
 npm run generate:sanity
+
+# Generate using schema.club format
+npm run generate:schema.club
 ```
 
-### Output Formats
+## Quick Start
 
-Generate different output formats:
+1. **Generate DOT file** (uses sanity format by default):
 
-```bash
-# Generate DOT file (default)
-npm run generate
+   ```bash
+   npm run generate
+   ```
 
-# Generate PDF
-npm run pdf
+2. **Generate visualizations** (multiple layout options available):
 
-# Generate PNG
-npm run png
-```
+   ```bash
+   # Standard hierarchical layout (best for most cases)
+   npm run png
+
+   # Alternative layouts for complex schemas:
+   npm run png:neato    # Force-directed layout (good for clusters)
+   npm run png:fdp      # Force-directed with clustering
+   npm run png:sfdp     # Scalable force-directed (best for large graphs)
+   npm run png:twopi    # Radial layout (good for hub-and-spoke patterns)
+
+   # Generate all 5 layouts at once
+   npm run png:all
+   ```
+
+3. **For PDF output**:
+   ```bash
+   npm run pdf
+   ```
 
 ### Help
 
@@ -152,14 +178,55 @@ npm run generate -- --input-format=sanity
 
 ## Command-line Options
 
-| Option           | Short | Description                                   | Default       |
-| ---------------- | ----- | --------------------------------------------- | ------------- |
-| `--input-format` | `-f`  | Input schema format (`schema.club`, `sanity`) | `schema.club` |
-| `--help`         | `-h`  | Show help information                         | -             |
+| Option           | Short | Description                                   | Default  |
+| ---------------- | ----- | --------------------------------------------- | -------- |
+| `--input-format` | `-f`  | Input schema format (`sanity`, `schema.club`) | `sanity` |
+| `--help`         | `-h`  | Show help information                         | -        |
+
+## Supported Formats
+
+### Sanity Format (Default)
+
+Native support for Sanity Studio schema format. This works with schemas extracted using `sanity schema extract`.
+
+**Example usage:**
+
+```bash
+# Extract schema from your Sanity Studio (run in your Sanity project directory)
+npx sanity@latest schema extract
+
+# Generate ERD from Sanity schema (default)
+npm run generate
+# or explicitly
+npm run generate -- --input-format=sanity
+```
+
+### Schema.club Format
+
+Alternative schema format that can be obtained from https://schema.club.
+
+**Example usage:**
+
+```bash
+npm run generate -- --input-format=schema.club
+```
 
 ### Step 1: Prepare Your Schema File
 
-Place a `schema.json` file in your project root containing your schema definition. The schema should be in JavaScript object notation format, like this:
+#### For Sanity Format (Default)
+
+Extract your schema from your Sanity Studio project:
+
+```bash
+# Run this in your Sanity Studio project directory
+npx sanity@latest schema extract
+```
+
+This creates a `schema.json` file with your complete schema definition.
+
+#### For Schema.club Format
+
+Place a `schema.json` file in your project root containing your schema definition in the schema.club format (available from https://schema.club).
 
 ```json
 [
@@ -201,17 +268,20 @@ Place a `schema.json` file in your project root containing your schema definitio
 Run the schema visualizer with your preferred format:
 
 ```bash
-# Using default schema.club format
+# Using default sanity format
 npm run generate
 
 # Using explicit format specification
+npm run generate -- --input-format=sanity
+
+# Using schema.club format
 npm run generate -- --input-format=schema.club
 ```
 
 Output example:
 
 ```
-🔍 Processing schema using schema.club format...
+🔍 Processing schema using sanity format...
 📊 Found 105 schema types (23 documents, 82 objects)
 ✅ Successfully generated Graphviz DOT file at: /path/to/schema.dot
 📄 To generate PDF: npm run pdf

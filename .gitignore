@@ -140,3 +140,8 @@ vite.config.ts.timestamp-*
 
 # ignore private schema files!
 schema.*
+schema-*
+*schema*.json
+*schema*.png
+*schema*.pdf
+*schema*.svg
