@@ -145,3 +145,6 @@ schema-*
 *schema*.png
 *schema*.pdf
 *schema*.svg
+
+# allow readme images
+!*schema*example*.png

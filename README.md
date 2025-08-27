@@ -12,6 +12,14 @@ With complex schemas (90+ relationships), different layout algorithms work bette
 
 **💡 Tip**: Start with `npm run png:all` to generate all layouts, then choose the one that best shows your schema's structure!
 
+## Example output
+
+> Example output in dot layout for `sanity` schema input (from `sanity schema extract`)
+> ![Example output in dot layout for sanity schema input](sanity-schema-dot-example-image.png)
+
+> Example output in dot layout for `schema.club` input (from `sanity schema extract` -> paste to schema.club -> export as json)
+> ![Example output in dot layout for schema.club input](schema-club-dot-example-image.png)
+
 ## Command-Line Options
 
 Multiple input formats and automatically detects relationships between your schema types to generate beautiful, connected diagrams that help you understand your content structure at a glance.
